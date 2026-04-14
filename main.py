@@ -46,10 +46,12 @@ class Alumno(AlumnoCreate):
 
 
 class ProfesorCreate(BaseModel):
-    numeroEmpleado: str
+    model_config = {"populate_by_name": True}
+
+    numeroEmpleado: str = Field(alias="numero_empleado")
     nombres: str
     apellidos: str
-    horasClase: int
+    horasClase: int = Field(alias="horas_clase")
 
     @field_validator("numeroEmpleado", "nombres", "apellidos")
     @classmethod
