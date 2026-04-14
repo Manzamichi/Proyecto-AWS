@@ -1,10 +1,12 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, field_validator, Field
-from typing import List, Optional
+from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel, field_validator
+from typing import List
 import math
 
 app = FastAPI(title="AWS Cloud Foundations API")
+
 
 class AlumnoCreate(BaseModel):
     nombres: str
@@ -28,13 +30,12 @@ class AlumnoCreate(BaseModel):
             raise ValueError("promedio debe estar entre 0 y 10")
         return v
 
-class ProfesorCreate(BaseModel):
-    model_config = {"populate_by_name": True}
 
-    numeroEmpleado: str = Field(alias="numero_empleado")
+class ProfesorCreate(BaseModel):
+    numeroEmpleado: str
     nombres: str
     apellidos: str
-    horasClase: int = Field(alias="horas_clase")
+    horasClase: int
 
     @field_validator("numeroEmpleado")
     @classmethod
@@ -55,14 +56,17 @@ class ProfesorCreate(BaseModel):
             raise ValueError("horasClase debe ser un número positivo")
         return v
 
+
 alumnos: List[dict] = []
 profesores: List[dict] = []
 alumno_counter = 1
 profesor_counter = 1
 
+
 @app.get("/alumnos", status_code=200)
 def get_alumnos():
     return alumnos
+
 
 @app.get("/alumnos/{id}", status_code=200)
 def get_alumno(id: int):
@@ -70,6 +74,7 @@ def get_alumno(id: int):
     if not alumno:
         raise HTTPException(status_code=404, detail=f"Alumno con id {id} no encontrado")
     return alumno
+
 
 @app.post("/alumnos", status_code=201)
 async def create_alumno(request: Request, data: AlumnoCreate):
@@ -82,6 +87,7 @@ async def create_alumno(request: Request, data: AlumnoCreate):
     alumnos.append(alumno)
     return alumno
 
+
 @app.put("/alumnos/{id}", status_code=200)
 def update_alumno(id: int, data: AlumnoCreate):
     alumno = next((a for a in alumnos if a["id"] == id), None)
@@ -89,6 +95,7 @@ def update_alumno(id: int, data: AlumnoCreate):
         raise HTTPException(status_code=404, detail=f"Alumno con id {id} no encontrado")
     alumno.update(data.model_dump())
     return alumno
+
 
 @app.delete("/alumnos/{id}", status_code=200)
 def delete_alumno(id: int):
@@ -98,9 +105,11 @@ def delete_alumno(id: int):
     alumnos.remove(alumno)
     return alumno
 
+
 @app.get("/profesores", status_code=200)
 def get_profesores():
     return profesores
+
 
 @app.get("/profesores/{id}", status_code=200)
 def get_profesor(id: int):
@@ -108,6 +117,7 @@ def get_profesor(id: int):
     if not profesor:
         raise HTTPException(status_code=404, detail=f"Profesor con id {id} no encontrado")
     return profesor
+
 
 @app.post("/profesores", status_code=201)
 async def create_profesor(request: Request, data: ProfesorCreate):
@@ -120,6 +130,7 @@ async def create_profesor(request: Request, data: ProfesorCreate):
     profesores.append(profesor)
     return profesor
 
+
 @app.put("/profesores/{id}", status_code=200)
 def update_profesor(id: int, data: ProfesorCreate):
     profesor = next((p for p in profesores if p["id"] == id), None)
@@ -127,6 +138,7 @@ def update_profesor(id: int, data: ProfesorCreate):
         raise HTTPException(status_code=404, detail=f"Profesor con id {id} no encontrado")
     profesor.update(data.model_dump())
     return profesor
+
 
 @app.delete("/profesores/{id}", status_code=200)
 def delete_profesor(id: int):
@@ -136,9 +148,11 @@ def delete_profesor(id: int):
     profesores.remove(profesor)
     return profesor
 
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(status_code=400, content={"detail": "Bad request"})
+
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
