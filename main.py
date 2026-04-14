@@ -10,7 +10,7 @@
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 from typing import List, Optional
 import math
 
