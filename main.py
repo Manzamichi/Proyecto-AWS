@@ -1,22 +1,10 @@
-# /// main
-# requires-python = ">=X.XX" TODO: Update this to the minimum Python version you want to support
-# dependencies = [
-#   TODO: Add any dependencies your script requires
-# ]
-# ///
-
-# TODO: Update the main function to your needs or remove it.
-
-
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator, Field
 from typing import List, Optional
 import math
 
 app = FastAPI(title="AWS Cloud Foundations API")
-
-# ─── Modelos ────────────────────────────────────────────────────────────────
 
 class AlumnoCreate(BaseModel):
     nombres: str
@@ -27,9 +15,9 @@ class AlumnoCreate(BaseModel):
     @field_validator("nombres", "apellidos", "matricula")
     @classmethod
     def no_vacio(cls, v, info):
-        if not v or not v.strip():
+        if not v or not str(v).strip():
             raise ValueError(f"{info.field_name} no puede estar vacío")
-        return v.strip()
+        return str(v).strip()
 
     @field_validator("promedio")
     @classmethod
@@ -40,11 +28,6 @@ class AlumnoCreate(BaseModel):
             raise ValueError("promedio debe estar entre 0 y 10")
         return v
 
-
-class Alumno(AlumnoCreate):
-    id: int
-
-
 class ProfesorCreate(BaseModel):
     model_config = {"populate_by_name": True}
 
@@ -53,12 +36,17 @@ class ProfesorCreate(BaseModel):
     apellidos: str
     horasClase: int = Field(alias="horas_clase")
 
-    @field_validator("numeroEmpleado", "nombres", "apellidos")
+    @field_validator("numeroEmpleado")
+    @classmethod
+    def empleado_to_str(cls, v):
+        return str(v).strip() if v is not None else v
+
+    @field_validator("nombres", "apellidos")
     @classmethod
     def no_vacio(cls, v, info):
-        if not v or not v.strip():
+        if not v or not str(v).strip():
             raise ValueError(f"{info.field_name} no puede estar vacío")
-        return v.strip()
+        return str(v).strip()
 
     @field_validator("horasClase")
     @classmethod
@@ -67,31 +55,14 @@ class ProfesorCreate(BaseModel):
             raise ValueError("horasClase debe ser un número positivo")
         return v
 
-
-class Profesor(ProfesorCreate):
-    id: int
-
-
-# ─── Almacenamiento en memoria ───────────────────────────────────────────────
-
 alumnos: List[dict] = []
 profesores: List[dict] = []
 alumno_counter = 1
 profesor_counter = 1
 
-# ─── Helpers ────────────────────────────────────────────────────────────────
-
-def validation_error_response(exc):
-    errors = [{"campo": e["loc"][-1], "error": e["msg"]} for e in exc.errors()]
-    return JSONResponse(status_code=422, content={"detail": errors})
-
-
-# ─── Endpoints Alumnos ──────────────────────────────────────────────────────
-
 @app.get("/alumnos", status_code=200)
 def get_alumnos():
     return alumnos
-
 
 @app.get("/alumnos/{id}", status_code=200)
 def get_alumno(id: int):
@@ -100,15 +71,16 @@ def get_alumno(id: int):
         raise HTTPException(status_code=404, detail=f"Alumno con id {id} no encontrado")
     return alumno
 
-
 @app.post("/alumnos", status_code=201)
-def create_alumno(data: AlumnoCreate):
+async def create_alumno(request: Request, data: AlumnoCreate):
     global alumno_counter
-    alumno = {"id": alumno_counter, **data.model_dump()}
-    alumno_counter += 1
+    body = await request.json()
+    client_id = body.get("id")
+    alumno = {"id": client_id if client_id else alumno_counter, **data.model_dump()}
+    if not client_id:
+        alumno_counter += 1
     alumnos.append(alumno)
     return alumno
-
 
 @app.put("/alumnos/{id}", status_code=200)
 def update_alumno(id: int, data: AlumnoCreate):
@@ -118,7 +90,6 @@ def update_alumno(id: int, data: AlumnoCreate):
     alumno.update(data.model_dump())
     return alumno
 
-
 @app.delete("/alumnos/{id}", status_code=200)
 def delete_alumno(id: int):
     alumno = next((a for a in alumnos if a["id"] == id), None)
@@ -127,13 +98,9 @@ def delete_alumno(id: int):
     alumnos.remove(alumno)
     return alumno
 
-
-# ─── Endpoints Profesores ────────────────────────────────────────────────────
-
 @app.get("/profesores", status_code=200)
 def get_profesores():
     return profesores
-
 
 @app.get("/profesores/{id}", status_code=200)
 def get_profesor(id: int):
@@ -142,15 +109,16 @@ def get_profesor(id: int):
         raise HTTPException(status_code=404, detail=f"Profesor con id {id} no encontrado")
     return profesor
 
-
 @app.post("/profesores", status_code=201)
-def create_profesor(data: ProfesorCreate):
+async def create_profesor(request: Request, data: ProfesorCreate):
     global profesor_counter
-    profesor = {"id": profesor_counter, **data.model_dump()}
-    profesor_counter += 1
+    body = await request.json()
+    client_id = body.get("id")
+    profesor = {"id": client_id if client_id else profesor_counter, **data.model_dump()}
+    if not client_id:
+        profesor_counter += 1
     profesores.append(profesor)
     return profesor
-
 
 @app.put("/profesores/{id}", status_code=200)
 def update_profesor(id: int, data: ProfesorCreate):
@@ -160,7 +128,6 @@ def update_profesor(id: int, data: ProfesorCreate):
     profesor.update(data.model_dump())
     return profesor
 
-
 @app.delete("/profesores/{id}", status_code=200)
 def delete_profesor(id: int):
     profesor = next((p for p in profesores if p["id"] == id), None)
@@ -169,15 +136,9 @@ def delete_profesor(id: int):
     profesores.remove(profesor)
     return profesor
 
-
-# ─── Manejo global de errores ────────────────────────────────────────────────
-
-from fastapi.exceptions import RequestValidationError
-from fastapi import Request
-
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    return validation_error_response(exc)
+    return JSONResponse(status_code=400, content={"detail": "Bad request"})
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
