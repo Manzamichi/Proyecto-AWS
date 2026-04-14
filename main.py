@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, field_validator
-from typing import List
+from typing import List, Any
 import math
 
 app = FastAPI(title="AWS Cloud Foundations API")
@@ -32,7 +32,7 @@ class AlumnoCreate(BaseModel):
 
 
 class ProfesorCreate(BaseModel):
-    numeroEmpleado: str
+    numeroEmpleado: Any
     nombres: str
     apellidos: str
     horasClase: int
@@ -40,7 +40,9 @@ class ProfesorCreate(BaseModel):
     @field_validator("numeroEmpleado")
     @classmethod
     def empleado_to_str(cls, v):
-        return str(v).strip() if v is not None else v
+        if v is None or str(v).strip() == "":
+            raise ValueError("numeroEmpleado no puede estar vacío")
+        return str(v).strip()
 
     @field_validator("nombres", "apellidos")
     @classmethod
