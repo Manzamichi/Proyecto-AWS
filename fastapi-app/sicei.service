@@ -1,0 +1,27 @@
+# Copiar a /etc/systemd/system/sicei.service en el EC2.
+# Ajusta User y rutas según tu instancia.
+#
+#   sudo cp sicei.service /etc/systemd/system/sicei.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now sicei
+#   sudo systemctl status sicei
+#
+# El autotest usa el puerto 8080. Abre ese puerto en el security group del EC2.
+#
+[Unit]
+Description=SICEI REST API (FastAPI)
+After=network.target
+
+[Service]
+User=ec2-user
+WorkingDirectory=/home/ec2-user/fastapi-app
+EnvironmentFile=/home/ec2-user/fastapi-app/.env
+ExecStart=/home/ec2-user/fastapi-app/venv/bin/gunicorn app.main:app \
+    --workers 4 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8080
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
