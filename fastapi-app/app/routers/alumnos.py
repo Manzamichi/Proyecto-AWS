@@ -115,15 +115,27 @@ def login(id: str, data: LoginRequest, db: Session = Depends(get_db)):
 @router.post("/{id}/session/verify", status_code=200)
 def verify(id: str, data: SessionRequest):
     sesion = get_session(data.sessionString)
-    if not sesion or not sesion.get("active") or int(sesion.get("alumnoId", -1)) != id:
+    try:
+        id_int = int(id)
+    except ValueError:
         raise HTTPException(status_code=400, detail="Sesión inválida")
+
+    if not sesion or not sesion.get("active") or int(sesion.get("alumnoId", -1)) != id_int:
+        raise HTTPException(status_code=400, detail="Sesión inválida")
+        
     return {"mensaje": "Sesión válida"}
 
 
 @router.post("/{id}/session/logout", status_code=200)
 def logout(id: str, data: SessionRequest):
     sesion = get_session(data.sessionString)
-    if not sesion or int(sesion.get("alumnoId", -1)) != id:
+    try:
+        id_int = int(id)
+    except ValueError:
         raise HTTPException(status_code=400, detail="Sesión inválida")
+
+    if not sesion or int(sesion.get("alumnoId", -1)) != id_int:
+        raise HTTPException(status_code=400, detail="Sesión inválida")
+        
     deactivate_session(data.sessionString)
     return {"mensaje": "Sesión cerrada"}
