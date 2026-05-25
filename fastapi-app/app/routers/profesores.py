@@ -8,10 +8,15 @@ from app.schemas.profesor import ProfesorCreate
 router = APIRouter(prefix="/profesores", tags=["profesores"])
 
 
-def _get_or_404(db: Session, id: int) -> Profesor:
-    profesor = db.get(Profesor, id)
+def _get_or_404(db: Session, id_val: str) -> Profesor:
+    try:
+        id_int = int(id_val)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Recurso no encontrado")
+
+    profesor = db.get(Profesor, id_int)
     if not profesor:
-        raise HTTPException(status_code=404, detail=f"Profesor con id {id} no encontrado")
+        raise HTTPException(status_code=404, detail=f"Profesor con id {id_int} no encontrado")
     return profesor
 
 
@@ -21,7 +26,7 @@ def get_profesores(db: Session = Depends(get_db)):
 
 
 @router.get("/{id}", status_code=200)
-def get_profesor(id: int, db: Session = Depends(get_db)):
+def get_profesor(id: str, db: Session = Depends(get_db)):
     return _get_or_404(db, id).to_dict()
 
 
@@ -42,7 +47,7 @@ def create_profesor(data: ProfesorCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{id}", status_code=200)
-def update_profesor(id: int, data: ProfesorCreate, db: Session = Depends(get_db)):
+def update_profesor(id: str, data: ProfesorCreate, db: Session = Depends(get_db)):
     profesor = _get_or_404(db, id)
     profesor.numeroEmpleado = data.numeroEmpleado
     profesor.nombres = data.nombres
@@ -54,7 +59,7 @@ def update_profesor(id: int, data: ProfesorCreate, db: Session = Depends(get_db)
 
 
 @router.delete("/{id}", status_code=200)
-def delete_profesor(id: int, db: Session = Depends(get_db)):
+def delete_profesor(id: str, db: Session = Depends(get_db)):
     profesor = _get_or_404(db, id)
     data = profesor.to_dict()
     db.delete(profesor)
